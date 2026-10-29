@@ -245,6 +245,22 @@ test('store screenshots', async ({ electronApp, page }) => {
   await saveJson('providers.json', () => httpGet(page, '/api/providers'));
   await saveJson('assistants.json', () => httpGet(page, '/api/assistants'));
   await saveJson('agents.json', () => httpGet(page, '/api/agents/management'));
+  await saveJson('mcp-servers.json', () => httpGet(page, '/api/mcp/servers'));
+
+  await step(page, 'tools-menu', async () => {
+    await go(page, '#/guid');
+    await page.locator('.guid-input-card-shell button').first().click({ timeout: 10_000 });
+    await page.waitForTimeout(1000);
+    await snap(page, '02-plus-menu');
+    const mcpEntry = page.getByText(/MCP|工具/).first();
+    if (await mcpEntry.isVisible().catch(() => false)) {
+      await mcpEntry.hover().catch((): undefined => undefined);
+      await mcpEntry.click().catch((): undefined => undefined);
+      await page.waitForTimeout(1000);
+      await snap(page, '02-plus-mcp');
+    }
+    await page.keyboard.press('Escape');
+  });
 
   await step(page, 'files', async () => {
     await pickWorkspace(electronApp, page);
