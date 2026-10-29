@@ -18,6 +18,7 @@ import {
 import { BUILTIN_IMAGE_GEN_NAME, type IMcpServer, type IProvider } from '@/common/config/storage';
 import { getBuiltinMcpScriptPath, type ProcessConfig as ProcessConfigType } from './initStorage';
 import { migrateAssistantsToBackend } from './migrateAssistants';
+import { syncZhishuProvider } from '../zhishu/providerSync';
 
 type ConfigFile = typeof ProcessConfigType;
 type MigrationStepResult = boolean;
@@ -458,6 +459,8 @@ const MIGRATION_STEPS: Array<{
     name: 'ensureBootstrapMcpServersInDb',
     run: async (configFile) => (await ensureBootstrapMcpServersInDb(configFile), true),
   },
+  // Must follow the MCP bootstrap: it points the built-in image tool at the relay.
+  { name: 'syncZhishuProvider', run: async () => (await syncZhishuProvider(), true) },
   { name: 'migrateAssistantsToBackend', run: async (configFile) => migrateAssistantsToBackend(configFile) },
 ];
 

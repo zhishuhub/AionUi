@@ -1,12 +1,13 @@
-appId: com.aionui.app
-productName: AionUi
-executableName: AionUi
-copyright: Copyright © 2024 AionUi
+# Zhishu build (智枢 AI 工作台), based on AionUi. Program name stays ASCII; the UI shows the Chinese name.
+appId: com.zhishuhub.workbench
+productName: ZhishuWorkbench
+executableName: ZhishuWorkbench
+copyright: Copyright © 2024 AionUi; © 2026 Zhishu
 
 protocols:
-  - name: AionUi Protocol
+  - name: Zhishu Workbench Protocol
     schemes:
-      - aionui
+      - zhishu-workbench
 
 asar:
   smartUnpack: true
@@ -124,8 +125,8 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
+  shortcutName: 智枢 AI 工作台
+  uninstallDisplayName: 智枢 AI 工作台
   artifactName: ${productName}-${version}-${os}-${arch}.${ext}
   differentialPackage: false
 
@@ -169,17 +170,17 @@ linux:
   icon: resources/app.png
   artifactName: ${productName}-${version}-${os}-${arch}.${ext}
   category: Utility
-  maintainer: aionui
-  vendor: aionui
+  maintainer: zhishuhub
+  vendor: zhishuhub
   synopsis: ${description}
   description: ${description}
   desktop:
     entry:
-      Name: AionUi
+      Name: 智枢 AI 工作台
       Comment: ${description}
-      Icon: AionUi
+      Icon: ZhishuWorkbench
       Categories: Office;Utility;
-      MimeType: x-scheme-handler/aionui;
+      MimeType: x-scheme-handler/zhishu-workbench;
 
 npmRebuild: false
 buildDependenciesFromSource: false
@@ -216,9 +217,10 @@ removePackageScripts: true
 electronDownload:
   cache: ${env.ELECTRON_CACHE}
 
+# Updates are published on the website, not through electron-updater (the updater never starts).
 publish:
   provider: github
-  owner: iOfficeAI
+  owner: zhishuhub
   repo: AionUi
-  publishAutoUpdate: true
+  publishAutoUpdate: false
   releaseType: release

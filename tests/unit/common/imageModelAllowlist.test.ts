@@ -24,6 +24,13 @@ describe('isImageGenSupported', () => {
     expect(isImageGenSupported(provider, 'nano-banana')).toBe(true);
   });
 
+  it('accepts the Zhishu relay image alias, served through the Images API', () => {
+    const provider = { id: 'zhishu', platform: 'custom', base_url: 'https://zhishuhub.com/v1', name: '智枢 AI' };
+    expect(isImageGenSupported(provider, 'image')).toBe(true);
+    expect(isImageGenSupported(provider, 'chat')).toBe(false);
+    expect(isImageGenSupported({ ...provider, id: 'other' }, 'image')).toBe(false);
+  });
+
   it('accepts AntigravityTools by name', () => {
     const provider = { platform: 'custom', name: 'AntigravityTools' };
     expect(isImageGenSupported(provider, 'gemini-3-pro-image-1x1')).toBe(true);

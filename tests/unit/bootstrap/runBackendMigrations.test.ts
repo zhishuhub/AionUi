@@ -45,6 +45,9 @@ vi.mock('@/process/utils/initStorage', () => ({
   getBuiltinMcpScriptPath: (name: string) => `/mock/${name}.js`,
 }));
 
+// Zhishu build: the provider sync step reads the connection file through Electron APIs.
+const syncZhishuProviderMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock('@/process/zhishu/providerSync', () => ({ syncZhishuProvider: syncZhishuProviderMock }));
 vi.mock('@/process/utils/migrateAssistants', () => ({
   migrateAssistantsToBackend: vi.fn().mockResolvedValue(true),
 }));

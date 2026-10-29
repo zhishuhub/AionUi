@@ -21,7 +21,10 @@
  * extend this list accordingly.
  */
 
+import { ZHISHU_PROVIDER_ID } from '@/common/types/provider/zhishu';
+
 type ProviderShape = {
+  id?: string;
   platform?: string;
   base_url?: string;
   name?: string;
@@ -44,6 +47,11 @@ const RULES: Array<{
   {
     id: 'antigravity',
     match: (p) => !!p.name?.toLowerCase().includes('antigravity'),
+  },
+  {
+    // Zhishu relay: model `image` is served on /images/* by the Images API path in imageGenCore.
+    id: 'zhishu',
+    match: (p) => p.id === ZHISHU_PROVIDER_ID && p.platform === 'custom',
   },
 ];
 

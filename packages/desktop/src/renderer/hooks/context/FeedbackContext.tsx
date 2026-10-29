@@ -4,17 +4,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import FeedbackReportModal, {
-  type FeedbackEventExtra,
-  type FeedbackEventTags,
-  type PrefilledScreenshot,
-} from '@/renderer/components/settings/SettingsModal/contents/FeedbackReportModal';
+import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import { ipcBridge } from '@/common';
 import type {
   FeedbackDiagnosticsExplicitContext,
   FeedbackDiagnosticsProfile,
 } from '@/common/types/feedbackDiagnostics';
-import { captureFeedbackRoute, feedbackDiagnosticsContextFromRoute } from '@/renderer/services/feedback/routeContext';
+import type {
+  FeedbackEventExtra,
+  FeedbackEventTags,
+} from '@/renderer/components/settings/SettingsModal/contents/FeedbackReportModal';
+import { openExternalUrl } from '@/renderer/utils/platform';
 
 type OpenFeedbackOptions = {
   module?: string;
@@ -31,88 +31,24 @@ type FeedbackContextValue = {
 
 const FeedbackContext = createContext<FeedbackContextValue | null>(null);
 
-const captureScreenshot = async (): Promise<PrefilledScreenshot | null> => {
-  const capture = window.electronAPI?.captureFeedbackScreenshot;
-  if (!capture) return null;
-  try {
-    const result = await capture();
-    if (!result) return null;
-    return {
-      filename: result.filename,
-      data: new Uint8Array(result.data),
-      type: 'image/png',
-    };
-  } catch {
-    return null;
-  }
-};
-
+/**
+ * Zhishu build: feedback goes to the app's page on the website (its feedback form reaches
+ * the app author), instead of the upstream crash-report service. Every "Report issue"
+ * entry point keeps working and opens that page.
+ */
 export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [visible, setVisible] = useState(false);
-  const [defaultModule, setDefaultModule] = useState<string | undefined>(undefined);
-  const [prefilledScreenshots, setPrefilledScreenshots] = useState<PrefilledScreenshot[] | undefined>(undefined);
-  const [feedbackTags, setFeedbackTags] = useState<FeedbackEventTags | undefined>(undefined);
-  const [feedbackExtra, setFeedbackExtra] = useState<FeedbackEventExtra | undefined>(undefined);
-  const [feedbackDiagnosticsContext, setFeedbackDiagnosticsContext] = useState<
-    | {
-        explicitContext?: FeedbackDiagnosticsExplicitContext;
-        explicitProfiles?: FeedbackDiagnosticsProfile[];
-        routeAtOpen?: string;
-      }
-    | undefined
-  >(undefined);
-
-  const openFeedback = useCallback(async (options?: OpenFeedbackOptions) => {
-    const routeAtOpen = captureFeedbackRoute();
-    const routeContext = feedbackDiagnosticsContextFromRoute(routeAtOpen);
-    const explicitContext =
-      routeContext || options?.diagnosticsContext
-        ? {
-            ...routeContext,
-            ...options?.diagnosticsContext,
-          }
-        : undefined;
-    setDefaultModule(options?.module);
-    setFeedbackTags(options?.tags);
-    setFeedbackExtra(options?.extra);
-    setFeedbackDiagnosticsContext({
-      explicitContext,
-      explicitProfiles: options?.diagnosticsProfiles,
-      routeAtOpen,
-    });
-    if (options?.autoScreenshot) {
-      const shot = await captureScreenshot();
-      setPrefilledScreenshots(shot ? [shot] : undefined);
-    } else {
-      setPrefilledScreenshots(undefined);
+  const openFeedback = useCallback(async (_options?: OpenFeedbackOptions) => {
+    try {
+      const status = await ipcBridge.zhishu.status.invoke({ verify: false });
+      await openExternalUrl(`${status.siteOrigin}/apps/${status.appKey}`);
+    } catch (error) {
+      console.error('Failed to open the feedback page:', error);
     }
-    setVisible(true);
-  }, []);
-
-  const handleCancel = useCallback(() => {
-    setVisible(false);
-    setPrefilledScreenshots(undefined);
-    setFeedbackTags(undefined);
-    setFeedbackExtra(undefined);
-    setFeedbackDiagnosticsContext(undefined);
   }, []);
 
   const value = useMemo(() => ({ openFeedback }), [openFeedback]);
 
-  return (
-    <FeedbackContext.Provider value={value}>
-      {children}
-      <FeedbackReportModal
-        visible={visible}
-        onCancel={handleCancel}
-        defaultModule={defaultModule}
-        prefilledScreenshots={prefilledScreenshots}
-        feedbackTags={feedbackTags}
-        feedbackExtra={feedbackExtra}
-        feedbackDiagnosticsContext={feedbackDiagnosticsContext}
-      />
-    </FeedbackContext.Provider>
-  );
+  return <FeedbackContext.Provider value={value}>{children}</FeedbackContext.Provider>;
 };
 
 export const useFeedback = (): FeedbackContextValue => {

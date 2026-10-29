@@ -54,17 +54,10 @@ export const useDeepLink = () => {
 
   const handler = useCallback(
     (payload: DeepLinkPayload) => {
-      // Support both formats: "add-provider" and "provider/add" (one-api style)
+      // Zhishu build: providers come only from the one-click connection, so "add-provider"
+      // links (which carry an address and a key) are ignored.
       if (payload.action === 'add-provider' || payload.action === 'provider/add') {
-        pendingDeepLinkData = {
-          base_url: payload.params.base_url,
-          api_key: payload.params.api_key || payload.params.key,
-          name: payload.params.name,
-          platform: payload.params.platform,
-        };
-
-        // Navigate to model settings page; ModelModalContent will pick up the pending data
-        void navigate('/settings/model');
+        console.warn('[DeepLink] add-provider is not supported in this build');
         return;
       }
 

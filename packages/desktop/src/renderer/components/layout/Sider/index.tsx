@@ -7,7 +7,13 @@ import { useAuth } from '@renderer/hooks/context/AuthContext';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
 import { useThemeContext } from '@renderer/hooks/context/ThemeContext';
-import { SiderToolbar, SiderSearchEntry, SiderScheduledEntry, SiderAssistantEntry } from './SiderNav';
+import {
+  SiderToolbar,
+  SiderSearchEntry,
+  SiderScheduledEntry,
+  SiderAssistantEntry,
+  SiderWorkspaceEntries,
+} from './SiderNav';
 import SiderFooter from './SiderFooter';
 import TeamSiderSection from './TeamSiderSection';
 import siderStyles from './Sider.module.css';
@@ -64,7 +70,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         console.error('Navigation failed:', error);
       });
     } else {
-      Promise.resolve(navigate('/settings/agent')).catch((error) => {
+      Promise.resolve(navigate('/settings/zhishu')).catch((error) => {
         console.error('Navigation failed:', error);
       });
     }
@@ -89,6 +95,19 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     closePreview();
     setIsBatchMode(false);
     Promise.resolve(navigate('/scheduled')).catch((error) => {
+      console.error('Navigation failed:', error);
+    });
+    if (onSessionClick) {
+      onSessionClick();
+    }
+  };
+
+  const handleWorkspaceNavigate = (path: string) => {
+    cleanupSiderTooltips();
+    blurActiveElement();
+    closePreview();
+    setIsBatchMode(false);
+    Promise.resolve(navigate(path)).catch((error) => {
       console.error('Navigation failed:', error);
     });
     if (onSessionClick) {
@@ -215,6 +234,14 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               collapsed={collapsed}
               siderTooltipProps={siderTooltipProps}
               onClick={handleScheduledClick}
+            />
+            {/* Company-server pages (messages, knowledge base), shown once configured */}
+            <SiderWorkspaceEntries
+              isMobile={isMobile}
+              collapsed={collapsed}
+              pathname={pathname}
+              siderTooltipProps={siderTooltipProps}
+              onNavigate={handleWorkspaceNavigate}
             />
             {/* Divider between fixed top nav and scrollable content area */}
             <div

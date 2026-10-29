@@ -45,6 +45,7 @@ vi.mock('@icon-park/react', () => ({
   Brain: () => <span aria-hidden='true'>brain</span>,
   Down: () => <span aria-hidden='true'>v</span>,
   Plus: () => <span aria-hidden='true'>+</span>,
+  LinkCloud: () => <span aria-hidden='true'>link</span>,
   Search: () => <span aria-hidden='true'>search</span>,
 }));
 

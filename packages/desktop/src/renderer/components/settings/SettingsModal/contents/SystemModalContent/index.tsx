@@ -30,7 +30,6 @@ import DevSettings from './DevSettings';
 import BrowserDataSection from './BrowserDataSection';
 import DirInputItem from './DirInputItem';
 import PreferenceRow from './PreferenceRow';
-import VoiceInputSection from './VoiceInputSection';
 
 /**
  * System settings content component
@@ -569,8 +568,7 @@ const SystemModalContent: React.FC = () => {
             </Form>
           </div>
 
-          {/* Voice input (speech-to-text) settings */}
-          <VoiceInputSection />
+          {/* Zhishu build: speech-to-text needs a third-party key, so its settings are hidden. */}
 
           {/* In-app browser: sign-in state and cache */}
           <BrowserDataSection />

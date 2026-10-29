@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ipcBridge } from '@/common';
 import type { MenuItemConstructorOptions } from 'electron';
 import { Menu, app } from 'electron';
 
@@ -60,17 +59,7 @@ export function setupApplicationMenu(): void {
     ],
   });
 
-  template.push({
-    label: 'Help',
-    submenu: [
-      {
-        label: 'Check for Updates...',
-        click: () => {
-          ipcBridge.update.open.emit({ source: 'menu' });
-        },
-      },
-    ],
-  });
+  // Zhishu build: no "Check for Updates" menu — Settings → About checks the website instead.
 
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);

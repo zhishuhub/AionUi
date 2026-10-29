@@ -10,7 +10,7 @@ import PwaPullToRefresh from '@/renderer/components/layout/PwaPullToRefresh';
 import Titlebar from '@/renderer/components/layout/Titlebar';
 import { Layout as ArcoLayout, Tooltip } from '@arco-design/web-react';
 import classNames from 'classnames';
-import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { setGlobalNavigate } from '@/renderer/utils/navigation';
@@ -36,8 +36,7 @@ import { useDesktopTurnNotification } from '@renderer/hooks/system/notification/
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useConversationShortcuts } from '@renderer/hooks/ui/useConversationShortcuts';
 import { isElectronDesktop } from '@renderer/utils/platform';
-import { IS_DISCONTINUED_BUILD } from '@/renderer/utils/discontinuedBuild';
-import UpdateMigrationDialog from '@/renderer/components/settings/UpdateMigrationDialog';
+import ZhishuGate from '@/renderer/pages/zhishu/ZhishuGate';
 import '@renderer/styles/layout.css';
 
 const SidebarIcon: React.FC<{ size?: number; strokeWidth?: number }> = ({ size = 18, strokeWidth = 4 }) => (
@@ -88,8 +87,6 @@ const useDebug = () => {
 
   return { onClick };
 };
-
-const UpdateModal = React.lazy(() => import('@/renderer/components/settings/UpdateModal'));
 
 const DEFAULT_SIDER_WIDTH = 260;
 const DESKTOP_COLLAPSED_WIDTH = 0;
@@ -325,8 +322,9 @@ const Layout: React.FC<{
     };
 
     // Handle check update request from tray / 托盘请求检查更新
+    // Zhishu build: updates come from the website; About has the version check.
     const handleCheckUpdate = () => {
-      window.dispatchEvent(new CustomEvent('aionui-open-update-modal', { detail: { source: 'tray' } }));
+      void navigate('/settings/about');
     };
 
     // Listen for tray events / 监听托盘事件
@@ -408,23 +406,17 @@ const Layout: React.FC<{
                     className={classNames('w-5.5 h-5.5 absolute inset-0 m-auto', {
                       'scale-140': !collapsed,
                     })}
-                    viewBox='0 0 80 80'
+                    viewBox='0 0 64 64'
                     fill='none'
                   >
+                    {/* Zhishu mark */}
                     <path
-                      key='logo-path-1'
-                      d='M40 20 Q38 22 25 40 Q23 42 26 42 L30 42 Q32 40 40 30 Q48 40 50 42 L54 42 Q57 42 55 40 Q42 22 40 20'
-                      fill='white'
-                    ></path>
-                    <circle key='logo-circle' cx='40' cy='46' r='3' fill='white'></circle>
-                    <path
-                      key='logo-path-2'
-                      d='M18 50 Q40 70 62 50'
+                      d='M18.5 19.5H45.5L35.82 28.47M45.5 44.5H18.5L28.18 35.53'
                       stroke='white'
-                      strokeWidth='3.5'
-                      fill='none'
+                      strokeWidth='8'
                       strokeLinecap='round'
-                    ></path>
+                      strokeLinejoin='round'
+                    />
                   </svg>
                 </div>
                 {isSettingsRoute ? (
@@ -442,11 +434,13 @@ const Layout: React.FC<{
                         }
                       }}
                     >
-                      AionUi
+                      {t('settings.zhishu.appName')}
                     </div>
                   </Tooltip>
                 ) : (
-                  <div className='text-16px text-t-primary collapsed-hidden font-semibold'>AionUi</div>
+                  <div className='text-16px text-t-primary collapsed-hidden font-semibold'>
+                    {t('settings.zhishu.appName')}
+                  </div>
                 )}
                 {isMobile && !collapsed && (
                   <button
@@ -503,12 +497,10 @@ const Layout: React.FC<{
                       : undefined
                 }
               >
-                <Outlet />
+                <ZhishuGate>
+                  <Outlet />
+                </ZhishuGate>
                 <PwaPullToRefresh />
-                <Suspense fallback={null}>
-                  <UpdateModal />
-                </Suspense>
-                {IS_DISCONTINUED_BUILD && <UpdateMigrationDialog />}
               </ArcoLayout.Content>
               {/* Hoisted preview region (project conversations only). Structurally
                   persistent: lives above the per-conversation subtree, so a

@@ -1,12 +1,11 @@
 {
   "name": "AionUi",
-  "version": "2.2.2",
-  "description": "Transform your command-line AI agent into a modern, efficient AI Chat interface.",
+  "version": "2.2.2-zs.1",
+  "description": "智枢 AI 工作台：对话、操作文件、定时提醒和生图，一键接入智枢 AI。基于 AionUi 修改。",
   "keywords": [],
   "license": "Apache-2.0",
   "author": {
-    "name": "AionUi",
-    "email": "service@aionui.com"
+    "name": "Zhishu"
   },
   "workspaces": [
     "packages/*"
@@ -268,5 +267,5 @@
   "patchedDependencies": {
     "7zip-bin@5.2.0": "patches/7zip-bin@5.2.0.patch"
   },
-  "productName": "AionUi"
+  "productName": "ZhishuWorkbench"
 }

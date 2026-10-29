@@ -58,7 +58,8 @@ describe('resolveFeedbackModule', () => {
     );
     // Pages where preselecting a module makes no sense (multi-purpose or
     // pre-auth surfaces where the user picks the module themselves).
-    const moduleLess = new Set(['/guid', '/login', '/test/components']);
+    // /workspace/* embeds company-server pages (Zhishu build); their issues are not app modules.
+    const moduleLess = new Set(['/guid', '/login', '/test/components', '/workspace/sample-id']);
     const paths = [...routerSrc.matchAll(/path='([^*'][^']*)'/g)].map((m) => m[1]);
     expect(paths.length).toBeGreaterThan(10);
     for (const routePath of paths) {

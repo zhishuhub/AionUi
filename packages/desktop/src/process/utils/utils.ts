@@ -98,7 +98,8 @@ const ensureCliSafeSymlink = (targetPath: string, symlinkName: string): string =
 export const getDataPath = (): string => {
   const rootPath = getElectronPathOrFallback('userData');
   const dataPath = path.join(rootPath, 'aionui');
-  return ensureCliSafeSymlink(dataPath, getEnvAwareName('.aionui'));
+  // Zhishu build: own home-directory link so it never collides with an AionUi install.
+  return ensureCliSafeSymlink(dataPath, getEnvAwareName('.zhishu-workbench'));
 };
 
 /**
@@ -110,7 +111,7 @@ export const getDataPath = (): string => {
 export const getConfigPath = (): string => {
   const rootPath = getElectronPathOrFallback('userData');
   const configPath = path.join(rootPath, 'config');
-  return ensureCliSafeSymlink(configPath, getEnvAwareName('.aionui-config'));
+  return ensureCliSafeSymlink(configPath, getEnvAwareName('.zhishu-workbench-config'));
 };
 
 /**

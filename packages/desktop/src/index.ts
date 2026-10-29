@@ -11,9 +11,8 @@ import { installGpuCrashHandler } from './process/utils/gpuRecovery';
 import { describeUncaughtError } from './process/utils/describeUncaughtError';
 import type { UncaughtErrorDiagnostics } from './process/utils/describeUncaughtError';
 import { createRendererRecoveryPolicy } from './process/utils/rendererRecovery';
-import { captureBackendStartupFailure, initSentry, scheduleStartupLogReport, setSentryDeviceId } from './sentry';
-
-initSentry();
+// Zhishu build: crash reporting is off — Sentry is never initialized, so its capture calls are no-ops.
+import { captureBackendStartupFailure } from './sentry';
 
 import './process/utils/configureConsoleLog';
 import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session } from 'electron';
@@ -504,8 +503,6 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
   });
   console.log(`[AionUi] Main window created (id=${mainWindow.id})`);
 
-  scheduleStartupLogReport(mainWindow);
-
   // Show window after content is ready to prevent FOUC (Flash of Unstyled Content)
   // Use 'ready-to-show' which fires when renderer has painted first frame,
   // combined with 'did-finish-load' as belt-and-suspenders approach.
@@ -542,37 +539,8 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
   registerWindowMaximizeListeners(mainWindow);
   attachWindowBoundsPersistence(mainWindow, (bounds) => ProcessConfig.set('window.bounds', bounds));
 
-  // Initialize auto-updater service (skip when disabled via env, e.g. E2E / CI)
-  // 初始化自动更新服务（通过环境变量禁用时跳过，例如 E2E / CI 场景）
-  const isCiRuntime = process.env.CI === 'true' || process.env.CI === '1' || process.env.GITHUB_ACTIONS === 'true';
-  const disableAutoUpdater =
-    process.env.AIONUI_DISABLE_AUTO_UPDATE === '1' || process.env.AIONUI_E2E_TEST === '1' || isCiRuntime;
-  if (!disableAutoUpdater) {
-    Promise.all([import('./process/services/autoUpdaterService'), import('./process/bridge/updateBridge')])
-      .then(([{ autoUpdaterService }, { createAutoUpdateStatusBroadcast }]) => {
-        // Create status broadcast callback that emits via ipcBridge (pure emitter, no window binding)
-        const statusBroadcast = createAutoUpdateStatusBroadcast();
-        autoUpdaterService.initialize(statusBroadcast);
-        autoUpdaterService.setBeforeQuitAndInstall(async () => {
-          await backendManager.stop();
-        });
-        // Check for updates after 3 seconds delay. Skipped in the discontinued
-        // build: AionUi's final version guides users to the website instead of
-        // auto-checking, so startup stays silent. The flag is a compile-time
-        // literal, so this branch is tree-shaken out of non-discontinued builds.
-        // 3秒后检查更新。停更版启动静默，不做应用内检测。
-        if (!process.env.IS_DISCONTINUED_BUILD) {
-          setTimeout(() => {
-            void autoUpdaterService.checkForUpdatesAndNotify();
-          }, 3000);
-        }
-      })
-      .catch((error) => {
-        console.error('[App] Failed to initialize autoUpdaterService:', error);
-      });
-  } else {
-    console.log('[AionUi] Auto-updater disabled via env/CI guard');
-  }
+  // Zhishu build: updates are downloaded from the website (Settings shows the latest version),
+  // so the upstream auto-updater is never started and nothing is checked against its servers.
 
   // Load the renderer: dev server URL in development, built HTML file in production
   const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
@@ -714,8 +682,6 @@ const handleAppReady = async (): Promise<void> => {
       // Ignore dock icon errors in development
     }
   }
-
-  setSentryDeviceId();
 
   // Allow the renderer's Local Font Access queries (window.queryLocalFonts),
   // used by the appearance font picker to enumerate installed fonts. Electron 37

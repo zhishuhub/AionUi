@@ -49,6 +49,7 @@ import type {
   ProviderHealthCheckResponse,
   UpdateProviderRequest,
 } from '../types/provider/providerApi';
+import type { ZhishuStatus, ZhishuVersionInfo, ZhishuWorkspaceLinks } from '../types/provider/zhishu';
 import type {
   ITeamAgentRemovedEvent,
   ITeamAgentRenamedEvent,
@@ -757,6 +758,23 @@ export const autoUpdate = {
   cancelDownload: bridge.buildProvider<IBridgeResponse, void>('auto-update.download.cancel'),
   quitAndInstall: bridge.buildProvider<void, void>('auto-update.quit-and-install'),
   status: bridge.buildEmitter<AutoUpdateStatus>('auto-update.status'),
+};
+
+// ---------------------------------------------------------------------------
+// Zhishu connection — stays IPC (clipboard, connection file and website calls live in main)
+// ---------------------------------------------------------------------------
+
+export const zhishu = {
+  /** `verify` also checks with the relay that the saved key is still authorized. */
+  status: bridge.buildProvider<ZhishuStatus, { verify?: boolean }>('zhishu.status'),
+  connect: bridge.buildProvider<ZhishuStatus, { code: string }>('zhishu.connect'),
+  /** Connects with a code found on the clipboard; resolves `null` when there is none. */
+  connectFromClipboard: bridge.buildProvider<ZhishuStatus | null, void>('zhishu.connect-from-clipboard'),
+  disconnect: bridge.buildProvider<ZhishuStatus, void>('zhishu.disconnect'),
+  versionInfo: bridge.buildProvider<ZhishuVersionInfo, void>('zhishu.version-info'),
+  getWorkspaceLinks: bridge.buildProvider<ZhishuWorkspaceLinks, void>('zhishu.workspace-links.get'),
+  setWorkspaceLinks: bridge.buildProvider<ZhishuWorkspaceLinks, ZhishuWorkspaceLinks>('zhishu.workspace-links.set'),
+  workspaceLinksChanged: bridge.buildEmitter<ZhishuWorkspaceLinks>('zhishu.workspace-links-changed'),
 };
 
 // ---------------------------------------------------------------------------

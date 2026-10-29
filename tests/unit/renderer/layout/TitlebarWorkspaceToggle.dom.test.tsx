@@ -46,28 +46,25 @@ describe('Titlebar workspace toggle', () => {
     platform.mac = false;
   });
 
-  it('places the Windows workspace toggle directly after Bug Report', () => {
+  // Zhishu build: the titlebar has no Bug Report button (feedback goes to the website).
+  it('places the Windows workspace toggle directly before the window controls', () => {
     render(<Titlebar workspaceAvailable />);
 
-    const report = screen.getByRole('button', { name: 'conversation.welcome.quickActionFeedback' });
+    expect(screen.queryByRole('button', { name: 'conversation.welcome.quickActionFeedback' })).toBeNull();
     const workspace = screen.getByRole('button', { name: 'common.expandMore' });
 
-    expect(report.nextElementSibling).toBe(workspace);
     expect(workspace.nextElementSibling).toBe(screen.getByTestId('window-controls'));
   });
 
   it.each([
     { runtime: 'macOS desktop', desktop: true, mac: true },
     { runtime: 'WebUI', desktop: false, mac: false },
-  ])('keeps the workspace toggle after Bug Report on $runtime', ({ desktop, mac }) => {
+  ])('shows the workspace toggle without window controls on $runtime', ({ desktop, mac }) => {
     platform.desktop = desktop;
     platform.mac = mac;
     render(<Titlebar workspaceAvailable />);
 
-    const report = screen.getByRole('button', { name: 'conversation.welcome.quickActionFeedback' });
-    const workspace = screen.getByRole('button', { name: 'common.expandMore' });
-
-    expect(report.nextElementSibling).toBe(workspace);
+    expect(screen.getByRole('button', { name: 'common.expandMore' })).toBeInTheDocument();
     expect(screen.queryByTestId('window-controls')).not.toBeInTheDocument();
   });
 

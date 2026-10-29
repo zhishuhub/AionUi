@@ -11,7 +11,7 @@ import type { AgentRuntimeDerivedOption } from '@/renderer/utils/model/agentRunt
 import type { AcpModelInfo } from '../types';
 import { getAvailableModels } from '../utils/modelUtils';
 import { Button, Dropdown, Menu, Tooltip } from '@arco-design/web-react';
-import { Brain, Down, Plus } from '@icon-park/react';
+import { Brain, Down, LinkCloud } from '@icon-park/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -134,9 +134,9 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
       ? providerCompositeId(current_model.id, current_model.use_model || '')
       : null;
     const addModelItem = (
-      <Menu.Item key='add-model' className='text-12px text-t-secondary' onClick={() => navigate('/settings/model')}>
-        <Plus theme='outline' size='12' />
-        {t('settings.addModel')}
+      <Menu.Item key='add-model' className='text-12px text-t-secondary' onClick={() => navigate('/settings/zhishu')}>
+        <LinkCloud theme='outline' size='12' />
+        {t('settings.zhishu.tabTitle')}
       </Menu.Item>
     );
 

@@ -195,6 +195,82 @@ export async function processImageUri(imageUri: string, workspaceDir: string): P
 
 // ===== Core Execution =====
 
+// ===== OpenAI Images API (Zhishu relay) =====
+
+/**
+ * The Zhishu relay serves image generation as model `image` on `/images/generations`
+ * and `/images/edits`; it does not return images from chat completions.
+ */
+function usesImagesApi(provider: TProviderWithModel): boolean {
+  return provider.platform === 'custom' && provider.use_model === 'image';
+}
+
+/** Aborts on the caller's signal or after the API timeout, whichever comes first. */
+function timeoutSignal(signal?: AbortSignal): AbortSignal {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error('Image generation timed out.')), API_TIMEOUT_MS);
+  const abort = () => controller.abort(signal?.reason);
+  if (signal?.aborted) abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+  return controller.signal;
+}
+
+async function imageUrlToBlob(url: string, signal: AbortSignal): Promise<Blob> {
+  const match = /^data:(image\/[^;]+);base64,(.+)$/.exec(url);
+  if (match) return new Blob([Buffer.from(match[2], 'base64')], { type: match[1] });
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`Failed to download image: HTTP ${response.status}`);
+  return response.blob();
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  const base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+  return `data:${blob.type || 'image/png'};base64,${base64}`;
+}
+
+/** Generates (or edits, when images are given) one image and returns it as a data URL. */
+async function callImagesApi(
+  prompt: string,
+  images: ImageContent[],
+  provider: TProviderWithModel,
+  callerSignal?: AbortSignal
+): Promise<string> {
+  const signal = timeoutSignal(callerSignal);
+  const base = provider.base_url.replace(/\/+$/, '');
+  const authorization = { Authorization: `Bearer ${provider.api_key}` };
+  let response: Response;
+  if (images.length === 0) {
+    response = await fetch(`${base}/images/generations`, {
+      method: 'POST',
+      headers: { ...authorization, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: provider.use_model, prompt, n: 1 }),
+      signal,
+    });
+  } else {
+    const form = new FormData();
+    form.append('model', provider.use_model);
+    form.append('prompt', prompt);
+    const field = images.length === 1 ? 'image' : 'image[]';
+    for (const [index, image] of images.entries()) {
+      const blob = await imageUrlToBlob(image.image_url.url, signal);
+      const extension = blob.type.split('/')[1] || 'png';
+      form.append(field, blob, `image-${index + 1}.${extension}`);
+    }
+    response = await fetch(`${base}/images/edits`, { method: 'POST', headers: authorization, body: form, signal });
+  }
+
+  const body = (await response.json().catch((): null => null)) as {
+    data?: Array<{ b64_json?: string; url?: string }>;
+    error?: { message?: string };
+  } | null;
+  if (!response.ok) throw new Error(body?.error?.message || `HTTP ${response.status}`);
+  const first = body?.data?.[0];
+  if (first?.b64_json) return `data:image/png;base64,${first.b64_json}`;
+  if (first?.url) return blobToDataUrl(await imageUrlToBlob(first.url, signal));
+  throw new Error('The image service returned no image.');
+}
+
 export interface ImageGenParams {
   prompt: string;
   image_uris?: string[] | string;
@@ -245,6 +321,9 @@ export async function executeImageGeneration(
   }
 
   try {
+    // Images that made it through processing; the Images API path sends them as files.
+    const inputImages: ImageContent[] = [];
+
     // Parse image URIs
     let imageUris: string[] = [];
     if (params.image_uris) {
@@ -284,6 +363,7 @@ export async function executeImageGeneration(
       });
 
       successful.forEach((imageContent) => contentParts.push(imageContent));
+      inputImages.push(...successful);
 
       if (successful.length === 0) {
         return {
@@ -292,6 +372,17 @@ export async function executeImageGeneration(
           error: errors.join('\n'),
         };
       }
+    }
+
+    if (usesImagesApi(provider)) {
+      const dataUrl = await callImagesApi(params.prompt, inputImages, provider, signal);
+      const imagePath = await saveGeneratedImage(dataUrl, resolvedWorkspaceDir);
+      return {
+        success: true,
+        text: `Generated image saved to: ${imagePath}`,
+        imagePath,
+        relativeImagePath: path.relative(resolvedWorkspaceDir, imagePath),
+      };
     }
 
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{ role: 'user', content: contentParts }];

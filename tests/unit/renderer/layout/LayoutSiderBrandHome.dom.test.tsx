@@ -52,7 +52,9 @@ vi.mock('@/common/config/constants', () => ({
 }));
 vi.mock('@/renderer/components/layout/PwaPullToRefresh', () => ({ default: () => null }));
 vi.mock('@/renderer/components/layout/Titlebar', () => ({ default: () => null }));
-vi.mock('@/renderer/components/settings/UpdateModal', () => ({ default: () => null }));
+vi.mock('@/renderer/pages/zhishu/ZhishuGate', () => ({
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock('@renderer/hooks/system/useDeepLink', () => ({ useDeepLink: () => {} }));
 vi.mock('@renderer/hooks/system/notification/useNotificationClick', () => ({ useNotificationClick: () => {} }));
 vi.mock('@renderer/hooks/system/notification/useBrowserNotification', () => ({ useBrowserNotification: () => {} }));
@@ -159,7 +161,7 @@ describe('Layout sider brand Home button', () => {
 
     // No actionable role/label in chat routes.
     expect(screen.queryByLabelText(BACK_KEY)).toBeNull();
-    const wordmark = screen.getByText('AionUi');
+    const wordmark = screen.getByText('settings.zhishu.appName');
     fireEvent.click(wordmark);
     expect(navigate).not.toHaveBeenCalled();
   });
@@ -168,7 +170,7 @@ describe('Layout sider brand Home button', () => {
     currentPathname = '/conversation/xyz';
     renderLayout();
 
-    fireEvent.click(screen.getByText('AionUi'));
+    fireEvent.click(screen.getByText('settings.zhishu.appName'));
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -209,22 +211,12 @@ describe('Layout sider brand Home button', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('opens the update notification directly for tray update checks', () => {
+  it('opens About (where the website version check lives) for tray update checks', () => {
     platformMocks.isElectronDesktopMock.mockReturnValue(true);
-    const openListener = vi.fn();
-    window.addEventListener('aionui-open-update-modal', openListener);
+    renderLayout();
 
-    try {
-      renderLayout();
+    window.dispatchEvent(new Event('tray:check-update'));
 
-      window.dispatchEvent(new Event('tray:check-update'));
-
-      expect(navigate).not.toHaveBeenCalled();
-      expect(openListener).toHaveBeenCalledTimes(1);
-      const event = openListener.mock.calls[0][0] as CustomEvent;
-      expect(event.detail).toEqual({ source: 'tray' });
-    } finally {
-      window.removeEventListener('aionui-open-update-modal', openListener);
-    }
+    expect(navigate).toHaveBeenCalledWith('/settings/about');
   });
 });

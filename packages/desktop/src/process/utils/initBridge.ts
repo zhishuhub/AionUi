@@ -5,5 +5,7 @@
  */
 
 import { initAllBridges } from '../bridge';
+import { initZhishuBridge } from '../zhishu/bridge';
 
 initAllBridges();
+initZhishuBridge();
