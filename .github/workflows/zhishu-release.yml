@@ -92,27 +92,21 @@ jobs:
 
       - name: Rebuild native modules for Electron (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: bash
         run: |
-          $electronVer = (node -p "require('./package.json').devDependencies.electron.replace(/[\^~]/g, '')").Trim()
-          $sqliteNode = "node_modules/better-sqlite3/build/Release/better_sqlite3.node"
-          # 没有对应 Electron 版本的预编译包时 prebuild-install 会非零退出，接住后改为本地编译（同上游做法）
-          try {
-            bun x --yes prebuild-install --runtime=electron --target=$electronVer --platform=win32 --arch=x64 --force 2>&1
-          } catch {
-            Write-Host "prebuild-install failed: $_"
-          }
-          if (-not (Test-Path $sqliteNode)) {
-            try {
-              bunx electron-rebuild -f -w better-sqlite3
-            } catch {
-              Write-Host "electron-rebuild failed: $_"
-            }
-          }
-          if (-not (Test-Path $sqliteNode)) {
-            Write-Error "better-sqlite3 native module was not built"
+          electron_ver=$(node -p "require('./package.json').devDependencies.electron.replace(/[\^~]/g, '')")
+          sqlite_node=node_modules/better-sqlite3/build/Release/better_sqlite3.node
+          # 没有对应 Electron 版本的预编译包时 prebuild-install 非零退出，改为本地编译
+          bun x --yes prebuild-install --runtime=electron --target="$electron_ver" --platform=win32 --arch=x64 --force ||
+            echo "no prebuilt better-sqlite3 for Electron $electron_ver, building from source"
+          if [ ! -f "$sqlite_node" ]; then
+            bunx electron-rebuild -f -w better-sqlite3 || echo "electron-rebuild exited with $?"
+          fi
+          if [ ! -f "$sqlite_node" ]; then
+            echo "better-sqlite3 native module was not built" >&2
             exit 1
-          }
+          fi
+          ls -la "$sqlite_node"
         env:
           npm_config_runtime: electron
           npm_config_arch: x64
