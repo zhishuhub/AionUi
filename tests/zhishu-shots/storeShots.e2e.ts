@@ -154,6 +154,9 @@ test.afterAll(async () => {
 });
 
 test('store screenshots', async ({ electronApp, page }) => {
+  const mainLog = path.join(OUT, 'main.log');
+  electronApp.process().stdout?.on('data', (data: Buffer) => fs.appendFileSync(mainLog, data));
+  electronApp.process().stderr?.on('data', (data: Buffer) => fs.appendFileSync(mainLog, data));
   await resizeWindow(electronApp);
   await page.waitForTimeout(2000);
 
@@ -242,8 +245,10 @@ test('store screenshots', async ({ electronApp, page }) => {
   await step(page, 'cron', async () => {
     await go(page, '#/scheduled');
     await snap(page, '05-cron-empty');
-    const create = page.getByRole('button', { name: /新建|创建|添加/ }).first();
-    await create.click({ timeout: 10_000 });
+    await page.getByText('新建任务', { exact: true }).first().click({ timeout: 10_000 });
+    await page.waitForTimeout(800);
+    await snap(page, '05-cron-menu', false);
+    await page.getByText('手动创建', { exact: true }).first().click({ timeout: 10_000 });
     await page.waitForTimeout(1500);
     await snap(page, '05-cron-form');
   });

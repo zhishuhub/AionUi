@@ -70,7 +70,8 @@ jobs:
 
       - name: Take screenshots
         run: |
-          mkdir -p "$RUNNER_TEMP/no-extensions"
+          mkdir -p "$RUNNER_TEMP/no-extensions" tests/zhishu-shots/out
+          ls -R resources/bundled-aioncore | head -80 > tests/zhishu-shots/out/bundle.txt
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
             bunx playwright test --config tests/zhishu-shots/playwright.config.ts
         env:
@@ -82,6 +83,16 @@ jobs:
           ZHISHU_FAKE_PORT: '3999'
           SHOTS_WORKSPACE: /Users/demo/Documents/客户询价
           AIONUI_EXTENSIONS_PATH: ${{ runner.temp }}/no-extensions
+          # 开发模式下程序在 Electron 自己的目录里找后端，直接指到准备好的那份
+          AIONUI_BACKEND_BIN: ${{ github.workspace }}/resources/bundled-aioncore/linux-x64/aioncore
+          AIONUI_E2E_USER_DATA_DIR: ${{ runner.temp }}/shots-userdata
+
+      - name: Collect app logs
+        if: always()
+        run: |
+          mkdir -p tests/zhishu-shots/out/logs
+          find "$RUNNER_TEMP/shots-userdata" -type f \( -name '*.log' -o -name '*.txt' \) -size -5M -exec cp {} tests/zhishu-shots/out/logs/ \; || true
+          ls -laR "$RUNNER_TEMP/shots-userdata" | head -200 > tests/zhishu-shots/out/logs/userdata-tree.txt || true
 
       - name: Upload screenshots
         if: always()
