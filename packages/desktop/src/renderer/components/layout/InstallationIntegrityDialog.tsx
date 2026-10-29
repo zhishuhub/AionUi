@@ -2,10 +2,8 @@ import { Button, Message, Modal, Space, Typography } from '@arco-design/web-reac
 import type { TFunction } from 'i18next';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type FeedbackEventTags, submitFeedbackReport } from '@/renderer/services/feedback/submitFeedbackReport';
-
-const AIONUI_DOWNLOAD_URL = 'https://www.aionui.com/';
-const INSTALLATION_INTEGRITY_REPORT_FLUSH_TIMEOUT_MS = 2000;
+import { ipcBridge } from '@/common';
+import { ZHISHU_APP_KEY } from '@/common/types/provider/zhishu';
 
 type InstallationIntegrityDialogKind =
   | 'incomplete_installation'
@@ -34,8 +32,15 @@ export type InstallationIntegrityDiagnostics = {
   backendStartupFailure?: Record<string, unknown> | null;
 };
 
+/** This app's page on the Zhishu website: the latest installers and the feedback form. */
 export function openDownloadLatest(): void {
-  window.open(AIONUI_DOWNLOAD_URL, '_blank', 'noopener,noreferrer');
+  void ipcBridge.zhishu.status
+    .invoke({ verify: false })
+    .catch((): null => null)
+    .then((status) => {
+      const origin = status?.siteOrigin || 'https://zhishuhub.com';
+      window.open(`${origin}/apps/${ZHISHU_APP_KEY}`, '_blank', 'noopener,noreferrer');
+    });
 }
 
 /**
@@ -111,64 +116,6 @@ export function getInstallationIntegrityDiagnosticsSentText(
   return dialogKindText(t, kind, 'diagnosticsSent');
 }
 
-function buildInstallationIntegrityTags(diagnostics: InstallationIntegrityDiagnostics): FeedbackEventTags {
-  const tags: FeedbackEventTags = {
-    'aionui.installation_integrity.user_report': 'true',
-    'aionui.installation_integrity.report_source': diagnostics.source,
-  };
-
-  if (diagnostics.runtime?.failureKind) {
-    tags['aionui.installation_integrity.failure_kind'] = diagnostics.runtime.failureKind;
-  }
-  if (diagnostics.runtime?.resource) {
-    tags['aionui.runtime_resource'] = diagnostics.runtime.resource;
-  }
-  if (diagnostics.runtime?.resourceId) {
-    tags['aionui.runtime_resource_id'] = diagnostics.runtime.resourceId;
-  }
-  if (diagnostics.runtime?.scopeKind) {
-    tags['aionui.runtime_scope'] = diagnostics.runtime.scopeKind;
-  }
-
-  const reason = diagnostics.backendStartupFailure?.reason;
-  if (typeof reason === 'string') {
-    tags['aionui.backend_startup_failure.reason'] = reason;
-  }
-  const backendBoundaryCode = diagnostics.backendStartupFailure?.backendBoundaryCode;
-  if (typeof backendBoundaryCode === 'string') {
-    tags['aionui.backend_startup_failure.backend_boundary_code'] = backendBoundaryCode;
-  }
-  const backendBoundaryStage = diagnostics.backendStartupFailure?.backendBoundaryStage;
-  if (typeof backendBoundaryStage === 'string') {
-    tags['aionui.backend_startup_failure.backend_boundary_stage'] = backendBoundaryStage;
-  }
-
-  return tags;
-}
-
-export async function reportInstallationIntegrityDiagnostics(
-  diagnostics: InstallationIntegrityDiagnostics,
-  t: TFunction,
-  diagnosticsKind: InstallationIntegrityDialogKind = 'incomplete_installation'
-): Promise<void> {
-  await submitFeedbackReport({
-    collectLogs: true,
-    description: diagnostics.description ?? getBackendStartupInstallationDescription(t),
-    extra: {
-      installation_integrity: diagnostics,
-    },
-    flushTimeoutMs: INSTALLATION_INTEGRITY_REPORT_FLUSH_TIMEOUT_MS,
-    module: 'installation-integrity',
-    moduleLabel: getInstallationIntegrityTitle(t, diagnosticsKind),
-    tags: buildInstallationIntegrityTags(diagnostics),
-  });
-
-  if (typeof window !== 'undefined' && window.__aionuiE2ETest) {
-    window.__installationIntegrityReportCount = (window.__installationIntegrityReportCount ?? 0) + 1;
-    window.__lastInstallationIntegrityReportMessage = 'installation-integrity-user-report';
-  }
-}
-
 export function getInstallationIntegrityModalActions(
   t: TFunction,
   options: {
@@ -236,30 +183,13 @@ export const InstallationIntegrityFooter: React.FC<{
   diagnosticsKind?: InstallationIntegrityDialogKind;
 }> = ({ diagnostics, diagnosticsKind = 'incomplete_installation' }) => {
   const { t } = useTranslation();
-  const [reported, setReported] = useState(false);
-  const [reporting, setReporting] = useState(false);
   const [recovering, setRecovering] = useState(false);
+  // Problems are reported on the app's page on the Zhishu website, which also offers the latest installer.
   const actions = getInstallationIntegrityModalActions(t, {
     diagnosticsKind,
     onRecoverCorruptedDatabase: () => window.electronAPI?.recoverCorruptedDatabase?.(),
-    onReportDiagnostics: diagnostics
-      ? () => reportInstallationIntegrityDiagnostics(diagnostics, t, diagnosticsKind)
-      : undefined,
+    onReportDiagnostics: openDownloadLatest,
   });
-
-  const handleReportDiagnostics = async () => {
-    if (!diagnostics || reporting || reported) return;
-    setReporting(true);
-    try {
-      await actions.onReportDiagnostics();
-      setReported(true);
-      Message.success(dialogKindText(t, diagnosticsKind, 'diagnosticsReportSuccess'));
-    } catch {
-      Message.error(dialogKindText(t, diagnosticsKind, 'diagnosticsReportFailed'));
-    } finally {
-      setReporting(false);
-    }
-  };
 
   const handleRecoverCorruptedDatabase = () => {
     if (recovering) return;
@@ -287,11 +217,10 @@ export const InstallationIntegrityFooter: React.FC<{
       {actions.reportText ? (
         <Button
           data-testid='installation-integrity-report'
-          disabled={!diagnostics || reported}
-          loading={reporting}
-          onClick={handleReportDiagnostics}
+          disabled={!diagnostics}
+          onClick={() => void actions.onReportDiagnostics()}
         >
-          {reported ? getInstallationIntegrityDiagnosticsSentText(t, diagnosticsKind) : actions.reportText}
+          {actions.reportText}
         </Button>
       ) : null}
       {actions.downloadText ? (

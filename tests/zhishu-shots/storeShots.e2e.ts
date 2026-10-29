@@ -9,8 +9,7 @@ import os from 'os';
 import path from 'path';
 import type { ElectronApplication, Page } from '@playwright/test';
 import { test } from '../e2e/fixtures';
-import { httpGet, startAutoApprovePermissionMessages } from '../e2e/helpers';
-import { createAionrsConversationViaBridge, getAionrsTestModels, waitForAionrsReply } from '../e2e/helpers/chatAionrs';
+import { GUID_INPUT, httpGet, startAutoApprovePermissionMessages } from '../e2e/helpers';
 import { startFakeZhishu, type FakeZhishu } from './fakeZhishu';
 
 test.describe.configure({ timeout: 900_000 });
@@ -135,6 +134,55 @@ async function saveJson(name: string, load: () => Promise<unknown>): Promise<voi
   fs.writeFileSync(path.join(OUT, name), JSON.stringify(value, null, 2));
 }
 
+/** Answers the native folder picker with the demo folder, then picks it from the home page. */
+async function pickWorkspace(electronApp: ElectronApplication, page: Page): Promise<void> {
+  await electronApp.evaluate(({ dialog }, dir) => {
+    const answer = { canceled: false, filePaths: [dir], bookmarks: [] as string[] };
+    dialog.showOpenDialog = (async () => answer) as typeof dialog.showOpenDialog;
+    dialog.showOpenDialogSync = (() => [dir]) as typeof dialog.showOpenDialogSync;
+  }, WORKSPACE);
+  await go(page, '#/guid');
+  await page.getByText('在项目中工作', { exact: true }).first().click({ timeout: 10_000 });
+  await page.waitForTimeout(1200);
+  await snap(page, '03-workspace-menu');
+  const folderName = path.basename(WORKSPACE);
+  for (const label of [/选择.*文件夹/, /打开.*文件夹/, /浏览/, /添加.*文件夹/, /选择.*目录/, /本地文件夹/]) {
+    if (
+      await page
+        .getByText(folderName)
+        .first()
+        .isVisible()
+        .catch(() => false)
+    )
+      break;
+    const option = page.getByText(label).first();
+    if (await option.isVisible().catch(() => false)) {
+      await option.click().catch((): undefined => undefined);
+      await page.waitForTimeout(1200);
+    }
+  }
+  await snap(page, '03-workspace-picked');
+}
+
+/** Types a request on the home page and waits for the new conversation; returns its id. */
+async function sendFromHome(page: Page, text: string, shotPrefix: string): Promise<string> {
+  if (
+    !(await page
+      .locator(GUID_INPUT)
+      .isVisible()
+      .catch(() => false))
+  )
+    await go(page, '#/guid');
+  const input = page.locator(GUID_INPUT);
+  await input.waitFor({ state: 'visible', timeout: 30_000 });
+  await input.fill(text);
+  await page.waitForTimeout(600);
+  await snap(page, `${shotPrefix}-typed`);
+  await input.press('Enter');
+  await page.waitForFunction(() => window.location.hash.includes('/conversation/'), undefined, { timeout: 30_000 });
+  return (await page.evaluate(() => window.location.hash)).split('/conversation/')[1].split(/[?/]/)[0];
+}
+
 test.beforeAll(async () => {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
@@ -176,36 +224,26 @@ test('store screenshots', async ({ electronApp, page }) => {
   await saveJson('agents.json', () => httpGet(page, '/api/agents/management'));
 
   await step(page, 'files', async () => {
-    const models = await getAionrsTestModels(page);
-    if (!models) throw new Error('no aionrs-compatible provider after connecting');
-    const id = await createAionrsConversationViaBridge(page, {
-      name: '客户询价汇总',
-      workspace: WORKSPACE,
-      provider: models.modelA,
-    });
-    await go(page, `#/conversation/${id}`);
-    const input = page.locator('textarea').last();
-    await input.waitFor({ state: 'visible', timeout: 30_000 });
-    await input.fill(
-      '把这个文件夹里客户发来的询价整理成一张汇总表（客户、国家、产品、数量、交期、要点），存成「询价汇总.md」。'
+    await pickWorkspace(electronApp, page);
+    const id = await sendFromHome(
+      page,
+      '把这个文件夹里客户发来的询价整理成一张汇总表（客户、国家、产品、数量、交期、要点），存成「询价汇总.md」。',
+      '03-files'
     );
-    await page.waitForTimeout(500);
-    await snap(page, '03-files-typed', false);
-    await input.press('Enter');
     let stopApprove: (() => void) | null = null;
     const started = Date.now();
     for (let frame = 0; Date.now() - started < 60_000; frame++) {
       await page.waitForTimeout(2000);
       await snap(page, `03-files-frame-${String(frame).padStart(2, '0')}`, frame % 5 === 0);
       if (!stopApprove && Date.now() - started > 6000) stopApprove = startAutoApprovePermissionMessages(page);
-      const exists = fs.existsSync(path.join(WORKSPACE, '询价汇总.md'));
-      if (exists && frame > 6) break;
+      if (fs.existsSync(path.join(WORKSPACE, '询价汇总.md')) && frame > 6) break;
     }
-    await waitForAionrsReply(page, id, 120_000).catch((error: unknown) => errors.push(`files reply: ${String(error)}`));
+    if (!(await fake?.waitForFinal('files', 120_000))) errors.push('files: final answer was never requested');
+    await page.waitForTimeout(4000);
     stopApprove?.();
     await page.waitForTimeout(1500);
     await snap(page, '03-files-done');
-    await saveJson('files-conversation.json', () => httpGet(page, `/api/conversations/${encodeURIComponent(id)}`));
+    await saveJson('files-messages.json', () => httpGet(page, `/api/conversations/${encodeURIComponent(id)}/messages`));
   });
 
   await step(page, 'image', async () => {
@@ -223,20 +261,10 @@ test('store screenshots', async ({ electronApp, page }) => {
       return canvas.toDataURL('image/png').split(',')[1];
     });
     if (png) fake?.setImage(Buffer.from(png, 'base64'));
-    const models = await getAionrsTestModels(page);
-    if (!models) throw new Error('no provider');
-    const id = await createAionrsConversationViaBridge(page, {
-      name: '新品宣传海报',
-      workspace: WORKSPACE,
-      provider: models.modelA,
-    });
-    await go(page, `#/conversation/${id}`);
-    const input = page.locator('textarea').last();
-    await input.waitFor({ state: 'visible', timeout: 30_000 });
-    await input.fill('画一张新品宣传海报：LED 面板灯，简洁明亮，暖色背景。');
-    await input.press('Enter');
+    const id = await sendFromHome(page, '画一张新品宣传海报：LED 面板灯，简洁明亮，暖色背景。', '04-image');
     const stopApprove = startAutoApprovePermissionMessages(page);
-    await waitForAionrsReply(page, id, 90_000).catch((error: unknown) => errors.push(`image reply: ${String(error)}`));
+    if (!(await fake?.waitForFinal('image', 90_000))) errors.push(`image: final answer was never requested (${id})`);
+    await page.waitForTimeout(4000);
     stopApprove();
     await page.waitForTimeout(1500);
     await snap(page, '04-image-done');

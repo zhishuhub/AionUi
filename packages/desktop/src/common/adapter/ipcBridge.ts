@@ -49,7 +49,12 @@ import type {
   ProviderHealthCheckResponse,
   UpdateProviderRequest,
 } from '../types/provider/providerApi';
-import type { ZhishuStatus, ZhishuVersionInfo, ZhishuWorkspaceLinks } from '../types/provider/zhishu';
+import {
+  brandAssistant,
+  type ZhishuStatus,
+  type ZhishuVersionInfo,
+  type ZhishuWorkspaceLinks,
+} from '../types/provider/zhishu';
 import type {
   ITeamAgentRemovedEvent,
   ITeamAgentRenamedEvent,
@@ -168,7 +173,9 @@ export const shell = {
 // ---------------------------------------------------------------------------
 
 export const assistants = {
-  list: httpGet<Assistant[], void>('/api/assistants'),
+  list: withResponseMap(httpGet<Assistant[], void>('/api/assistants'), (items) =>
+    Array.isArray(items) ? items.map(brandAssistant) : items
+  ),
   get: httpGet<AssistantDetail, { id: string; locale?: string }>(
     ({ id, locale }) =>
       `/api/assistants/${encodeURIComponent(id)}${locale ? `?locale=${encodeURIComponent(locale)}` : ''}`

@@ -19,6 +19,8 @@ export type FakeZhishu = {
   port: number;
   baseUrl: string;
   setImage: (png: Buffer) => void;
+  /** Resolves once the scripted final answer of a scenario ('files' or 'image') has been sent. */
+  waitForFinal: (scenario: 'files' | 'image', timeoutMs: number) => Promise<boolean>;
   close: () => Promise<void>;
 };
 
@@ -96,6 +98,7 @@ export async function startFakeZhishu(options: FakeZhishuOptions): Promise<FakeZ
   fs.mkdirSync(options.outDir, { recursive: true });
   const logFile = path.join(options.outDir, 'requests.jsonl');
   let image: Buffer = TINY_PNG;
+  const finals = new Set<string>();
   const baseUrl = `http://127.0.0.1:${options.port}/v1`;
 
   const log = (entry: Record<string, unknown>) => {
@@ -160,6 +163,7 @@ export async function startFakeZhishu(options: FakeZhishuOptions): Promise<FakeZ
         });
       }
       if (done < plan.length) return plan[done];
+      finals.add('files');
       return { text: options.finalAnswer, calls: [] };
     }
 
@@ -171,6 +175,7 @@ export async function startFakeZhishu(options: FakeZhishuOptions): Promise<FakeZ
           calls: [{ name: toolName(draw), args: fillArgs(draw, { prompt: ask, path: options.workspace }) }],
         };
       }
+      finals.add('image');
       return { text: '海报已经生成好了，原图保存在当前工作区。需要换配色或者改文案可以直接告诉我。', calls: [] };
     }
 
@@ -311,6 +316,14 @@ export async function startFakeZhishu(options: FakeZhishuOptions): Promise<FakeZ
     baseUrl,
     setImage: (png) => {
       image = png;
+    },
+    waitForFinal: async (scenario, timeoutMs) => {
+      const deadline = Date.now() + timeoutMs;
+      while (Date.now() < deadline) {
+        if (finals.has(scenario)) return true;
+        await sleep(500);
+      }
+      return false;
     },
     close: () => new Promise((resolve) => server.close(() => resolve())),
   };

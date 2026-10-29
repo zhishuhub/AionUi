@@ -86,7 +86,7 @@
       "title": "Zhishu AI Workbench installation is incomplete",
       "description": "This installation is missing required local resources, so AionCore cannot start. Please download and reinstall the latest Zhishu AI Workbench. If the issue returns after reinstalling, check whether security or antivirus software quarantined AionCore.",
       "downloadLatest": "Download latest",
-      "sendDiagnostics": "Send diagnostics",
+      "sendDiagnostics": "Report on the app page",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
       "diagnosticsReportFailed": "Failed to send diagnostics report",
@@ -98,8 +98,8 @@
     },
     "dataMigration": {
       "title": "Local data migration failed",
-      "description": "Zhishu AI Workbench opened, but AionCore stopped while initializing local data. Reinstalling Zhishu AI Workbench may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
-      "sendDiagnostics": "Send diagnostics",
+      "description": "Zhishu AI Workbench opened, but AionCore stopped while initializing local data. Reinstalling Zhishu AI Workbench may not fix this. Report it on the app page so the local database migration can be inspected.",
+      "sendDiagnostics": "Report on the app page",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
       "diagnosticsReportFailed": "Failed to send diagnostics report"
@@ -111,8 +111,8 @@
     },
     "localDataRepair": {
       "title": "Local data repair failed",
-      "description": "Zhishu AI Workbench opened, but AionCore stopped while preparing local startup data such as assistant or agent records. Reinstalling Zhishu AI Workbench may not fix this. Send a diagnostics report or contact support so the local database can be inspected.",
-      "sendDiagnostics": "Send diagnostics",
+      "description": "Zhishu AI Workbench opened, but AionCore stopped while preparing local startup data such as assistant or agent records. Reinstalling Zhishu AI Workbench may not fix this. Report it on the app page so the local database can be inspected.",
+      "sendDiagnostics": "Report on the app page",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
       "diagnosticsReportFailed": "Failed to send diagnostics report"
@@ -120,7 +120,7 @@
     "startupDirectory": {
       "title": "Startup directory is unavailable",
       "description": "Zhishu AI Workbench opened, but AionCore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart Zhishu AI Workbench.",
-      "sendDiagnostics": "Send diagnostics",
+      "sendDiagnostics": "Report on the app page",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
       "diagnosticsReportFailed": "Failed to send diagnostics report"
@@ -129,8 +129,8 @@
       "title": "Local data is corrupted",
       "description": "Zhishu AI Workbench detected that the local database is corrupted and cannot continue startup. After confirmation, Zhishu AI Workbench will back up the old database and create a new local database to continue startup. Past conversations will no longer be shown, and the old database will be kept as a backup file.",
       "confirmRebuild": "Back up old DB and rebuild new DB",
-      "sendDiagnostics": "Send diagnostics",
-      "diagnosticsHint": "Sending diagnostics will not modify the local database.",
+      "sendDiagnostics": "Report on the app page",
+      "diagnosticsHint": "Reporting it will not modify the local database.",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
       "diagnosticsReportFailed": "Failed to send diagnostics report",
@@ -145,11 +145,11 @@
     "transientConcurrentStartup": {
       "title": "Zhishu AI Workbench is starting up",
       "description": "Another Zhishu AI Workbench startup was still using the local data when this window opened. This is temporary and your data is safe — no reinstall is needed. Please wait a moment and try again, or restart Zhishu AI Workbench.",
-      "sendDiagnostics": "Send diagnostics",
+      "sendDiagnostics": "Report on the app page",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
       "diagnosticsReportFailed": "Failed to send diagnostics report",
-      "diagnosticsHint": "If this keeps happening, you can send a diagnostics report."
+      "diagnosticsHint": "If this keeps happening, you can report it on the app page."
     },
     "pendingSlow": {
       "title": "Starting up",
@@ -157,24 +157,24 @@
     },
     "exited": {
       "title": "Startup didn't complete",
-      "description": "AionCore couldn't finish starting and has exited. Please restart the app; if this keeps happening, please send diagnostics.",
-      "sendDiagnostics": "Send diagnostics",
+      "description": "AionCore couldn't finish starting and has exited. Please restart the app; if this keeps happening, please report it on the app page.",
+      "sendDiagnostics": "Report on the app page",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics reported",
       "diagnosticsReportFailed": "Failed to send diagnostics, please retry"
     },
     "portReportTimeout": {
       "title": "Startup timed out",
-      "description": "AionCore didn't finish starting within the expected time. Please restart the app; if this keeps happening, please send diagnostics.",
-      "sendDiagnostics": "Send diagnostics",
+      "description": "AionCore didn't finish starting within the expected time. Please restart the app; if this keeps happening, please report it on the app page.",
+      "sendDiagnostics": "Report on the app page",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics reported",
       "diagnosticsReportFailed": "Failed to send diagnostics, please retry"
     },
     "startupFailed": {
       "title": "Startup failed",
-      "description": "AionCore failed to start. Please restart the app; if this keeps happening, please send diagnostics.",
-      "sendDiagnostics": "Send diagnostics",
+      "description": "AionCore failed to start. Please restart the app; if this keeps happening, please report it on the app page.",
+      "sendDiagnostics": "Report on the app page",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics reported",
       "diagnosticsReportFailed": "Failed to send diagnostics, please retry"

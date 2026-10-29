@@ -51,3 +51,39 @@ export type ZhishuVersionInfo = {
   /** App page on the website where the new installer can be downloaded. */
   pageUrl: string;
 };
+
+const APP_NAME_BY_LOCALE: Record<string, string> = { 'zh-CN': '智枢 AI 工作台', 'zh-TW': '智樞 AI 工作台' };
+const DEFAULT_APP_NAME = 'Zhishu AI Workbench';
+/** The backend's built-in helper assistant; its stored name carries the upstream product name. */
+const BUTLER_ASSISTANT_ID = 'aionui-assistant';
+const BUTLER_NAME_BY_LOCALE: Record<string, string> = { 'zh-CN': '工作台管家', 'zh-TW': '工作台管家' };
+const DEFAULT_BUTLER_NAME = 'Workbench Butler';
+
+type BrandedText = {
+  name: string;
+  name_i18n: Record<string, string>;
+  description?: string;
+  description_i18n: Record<string, string>;
+};
+
+function withAppName(text: string, locale?: string): string {
+  return text.replace(/AionU[iI]/g, (locale && APP_NAME_BY_LOCALE[locale]) || DEFAULT_APP_NAME);
+}
+
+function mapLocales(values: Record<string, string> | undefined, map: (value: string, locale: string) => string) {
+  return Object.fromEntries(Object.entries(values ?? {}).map(([locale, value]) => [locale, map(value, locale)]));
+}
+
+/** Shows the app's own name in the names and descriptions the backend stores for built-in assistants. */
+export function brandAssistant<T extends BrandedText & { id: string }>(assistant: T): T {
+  const butler = assistant.id === BUTLER_ASSISTANT_ID;
+  return {
+    ...assistant,
+    name: butler ? DEFAULT_BUTLER_NAME : withAppName(assistant.name),
+    name_i18n: mapLocales(assistant.name_i18n, (value, locale) =>
+      butler ? BUTLER_NAME_BY_LOCALE[locale] || DEFAULT_BUTLER_NAME : withAppName(value, locale)
+    ),
+    description: assistant.description === undefined ? undefined : withAppName(assistant.description),
+    description_i18n: mapLocales(assistant.description_i18n, withAppName),
+  };
+}
