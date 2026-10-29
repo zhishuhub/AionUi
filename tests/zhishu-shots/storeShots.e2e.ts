@@ -9,7 +9,7 @@ import os from 'os';
 import path from 'path';
 import type { ElectronApplication, Page } from '@playwright/test';
 import { test } from '../e2e/fixtures';
-import { GUID_INPUT, httpGet } from '../e2e/helpers';
+import { GUID_INPUT, httpGet, httpPost } from '../e2e/helpers';
 import { startFakeZhishu, type FakeZhishu } from './fakeZhishu';
 
 test.describe.configure({ timeout: 900_000 });
@@ -246,6 +246,11 @@ test('store screenshots', async ({ electronApp, page }) => {
   await saveJson('assistants.json', () => httpGet(page, '/api/assistants'));
   await saveJson('agents.json', () => httpGet(page, '/api/agents/management'));
   await saveJson('mcp-servers.json', () => httpGet(page, '/api/mcp/servers'));
+  await saveJson('mcp-image-test.json', async () => {
+    const servers = await httpGet<Array<{ name: string }>>(page, '/api/mcp/servers');
+    const image = servers.find((server) => server.name === 'aionui-image-generation');
+    return image ? httpPost(page, '/api/mcp/test-connection', image) : { error: 'no image server' };
+  });
 
   await step(page, 'tools-menu', async () => {
     await go(page, '#/guid');
@@ -260,6 +265,7 @@ test('store screenshots', async ({ electronApp, page }) => {
       await snap(page, '02-plus-mcp');
     }
     await page.keyboard.press('Escape');
+    await go(page, '#/scheduled');
   });
 
   await step(page, 'files', async () => {
