@@ -1,0 +1,93 @@
+name: Zhishu store screenshots
+
+# 应用广场截图：在云端启动工作台，对着假的智枢服务走一遍接入、对话整理文件、定时任务和设置，
+# 截图和页面文字作为构建产物上传。改截图脚本时自动跑，也可以手动触发。
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - zhishu
+    paths:
+      - 'tests/zhishu-shots/**'
+      - '.github/workflows/zhishu-screenshots.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zhishu-screenshots
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Set up bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install locked dependencies
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: bun install --frozen-lockfile
+
+      - name: Run postinstall
+        run: bun run postinstall || true
+
+      - name: Install display, fonts and Chinese locale
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgbm-dev fonts-noto-cjk fonts-noto-color-emoji language-pack-zh-hans
+          sudo mkdir -p /Users/demo/Documents
+          sudo chown -R "$USER" /Users
+
+      - name: Prepare aioncore binary
+        run: node scripts/prepareAioncore.js
+        env:
+          AIONUI_BACKEND_ARCH: x64
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Build app
+        run: bun run package
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Take screenshots
+        run: |
+          mkdir -p "$RUNNER_TEMP/no-extensions"
+          xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
+            bunx playwright test --config tests/zhishu-shots/playwright.config.ts
+        env:
+          CI: true
+          E2E_DEV: '1'
+          LANG: zh_CN.UTF-8
+          LANGUAGE: zh_CN
+          ZHISHU_CONNECT_URL: http://127.0.0.1:3999/api/apps/connect
+          ZHISHU_FAKE_PORT: '3999'
+          SHOTS_WORKSPACE: /Users/demo/Documents/客户询价
+          AIONUI_EXTENSIONS_PATH: ${{ runner.temp }}/no-extensions
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: zhishu-store-shots
+          path: tests/zhishu-shots/out/
+          retention-days: 14
+          if-no-files-found: warn

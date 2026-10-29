@@ -179,6 +179,7 @@ kanban/
 tests/e2e/screenshots/
 tests/e2e/results/
 tests/e2e/report/
+tests/zhishu-shots/out/
 
 # PowerShell accidentally creates a literal file named '$null' when a command
 # redirects output to $null (e.g. `cmd > $null`) on Windows runners.
