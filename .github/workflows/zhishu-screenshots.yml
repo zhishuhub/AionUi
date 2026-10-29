@@ -64,7 +64,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Build app
-        run: bun run package
+        # 和打包一样，内置 MCP（生图等）要单独打成自带依赖的脚本，外部 node 才能运行
+        run: |
+          bun run package
+          node scripts/build-mcp-servers.js
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
