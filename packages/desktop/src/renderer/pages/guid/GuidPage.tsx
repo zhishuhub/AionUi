@@ -169,8 +169,8 @@ const GuidPage: React.FC = () => {
         .catch((_error: unknown): AssistantDetail | null => null)
   );
   const resolvedAssistantDefaults = useMemo(
-    () => resolveGuidAssistantDefaults(selectedAssistantDetail),
-    [selectedAssistantDetail]
+    () => resolveGuidAssistantDefaults(selectedAssistantDetail, availableMcpServers),
+    [selectedAssistantDetail, availableMcpServers]
   );
   const selectedSkillNames = useMemo(() => {
     const disabledBuiltinSkillSet = new Set(
@@ -353,7 +353,7 @@ const GuidPage: React.FC = () => {
       return;
     }
 
-    const resolvedDefaults = resolveGuidAssistantDefaults(selectedAssistantDetail);
+    const resolvedDefaults = resolveGuidAssistantDefaults(selectedAssistantDetail, availableMcpServers);
     setGuidDisabledBuiltinSkills(resolvedDefaults.disabledBuiltinSkillIds);
     setGuidEnabledSkills(resolvedDefaults.skillIds);
   }, [selectedAssistantDetail, selectedAssistantId]);
@@ -388,6 +388,7 @@ const GuidPage: React.FC = () => {
       },
       availableModes: agentSelection.currentAgentModeOptions.map((mode) => mode.value),
       availableThoughtLevels: agentSelection.currentThoughtLevelOption?.options.map((option) => option.value) ?? [],
+      defaultMcpIds: resolveGuidAssistantDefaults(selectedAssistantDetail, availableMcpServers).mcpIds,
     });
     if (appliedAssistantDefaultsKeyRef.current === signature) {
       return;
@@ -395,7 +396,7 @@ const GuidPage: React.FC = () => {
     appliedAssistantDefaultsKeyRef.current = signature;
 
     const applyAssistantDefaults = async () => {
-      const resolvedDefaults = resolveGuidAssistantDefaults(selectedAssistantDetail);
+      const resolvedDefaults = resolveGuidAssistantDefaults(selectedAssistantDetail, availableMcpServers);
       const effectiveBackend = agentSelection.selectedAssistantBackend;
       const shouldApplyDefaultModel = manualModelSelectionAssistantRef.current !== selectedAssistantId;
       const shouldApplyDefaultThoughtLevel = manualThoughtLevelSelectionAssistantRef.current !== selectedAssistantId;
@@ -473,6 +474,7 @@ const GuidPage: React.FC = () => {
     modelSelection.setCurrentModel,
     selectedAssistantId,
     selectedAssistantDetail,
+    availableMcpServers,
   ]);
 
   const setGuidSelectedMode = useCallback(

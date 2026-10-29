@@ -21,6 +21,7 @@ export type FakeZhishu = {
   setImage: (png: Buffer) => void;
   /** Resolves once the scripted final answer of a scenario ('files' or 'image') has been sent. */
   waitForFinal: (scenario: 'files' | 'image', timeoutMs: number) => Promise<boolean>;
+  hasFinal: (scenario: 'files' | 'image') => boolean;
   close: () => Promise<void>;
 };
 
@@ -168,12 +169,32 @@ export async function startFakeZhishu(options: FakeZhishuOptions): Promise<FakeZ
     }
 
     if (/画|海报/.test(ask)) {
-      const draw = pickTool(tools, [/image_?gen/i, /generate_?image/i, /image/i]);
-      if (draw && done === 0) {
+      const called = new Set(
+        messages.flatMap((message) =>
+          (message.tool_calls ?? []).map((call) =>
+            String((call as { function?: { name?: string } }).function?.name ?? '')
+          )
+        )
+      );
+      const draw = tools.find((tool) => /image/i.test(toolName(tool)) && !/^ViewImage$/i.test(toolName(tool)));
+      const search = pickTool(tools, [/^ToolSearch$/]);
+      if (draw && !called.has(toolName(draw))) {
         return {
           text: '好的，按你的描述生成一张。',
           calls: [{ name: toolName(draw), args: fillArgs(draw, { prompt: ask, path: options.workspace }) }],
         };
+      }
+      if (!draw && search && !called.has(toolName(search))) {
+        return { text: '', calls: [{ name: toolName(search), args: { query: 'image generation' } }] };
+      }
+      // A deferred tool found by ToolSearch: take its name from the search result.
+      const found = messages
+        .filter((message) => message.role === 'tool')
+        .map((message) => textOf(message.content))
+        .join('\n')
+        .match(/([\w.-]*image[\w.-]*gen[\w.-]*|[\w.-]*generate[\w.-]*image[\w.-]*)/i)?.[1];
+      if (!draw && found && !called.has(found)) {
+        return { text: '好的，按你的描述生成一张。', calls: [{ name: found, args: { prompt: ask } }] };
       }
       finals.add('image');
       return { text: '海报已经生成好了，原图保存在当前工作区。需要换配色或者改文案可以直接告诉我。', calls: [] };
@@ -317,6 +338,7 @@ export async function startFakeZhishu(options: FakeZhishuOptions): Promise<FakeZ
     setImage: (png) => {
       image = png;
     },
+    hasFinal: (scenario) => finals.has(scenario),
     waitForFinal: async (scenario, timeoutMs) => {
       const deadline = Date.now() + timeoutMs;
       while (Date.now() < deadline) {

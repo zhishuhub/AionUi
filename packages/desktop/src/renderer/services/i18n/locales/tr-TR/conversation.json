@@ -784,5 +784,8 @@
     "progress": "{{completed}}/{{total}}",
     "expand": "Planı genişlet",
     "collapse": "Planı daralt"
+  },
+  "toolGroup": {
+    "viewSteps": "View steps"
   }
 }

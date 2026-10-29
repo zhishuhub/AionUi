@@ -832,6 +832,7 @@ export type I18nKey =
   | 'conversation.terminal.truncated'
   | 'conversation.thinking.complete'
   | 'conversation.thinking.label'
+  | 'conversation.toolGroup.viewSteps'
   | 'conversation.welcome.clearWorkspace'
   | 'conversation.welcome.currentWorkspace'
   | 'conversation.welcome.linkFolder'

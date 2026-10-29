@@ -9,7 +9,7 @@ import os from 'os';
 import path from 'path';
 import type { ElectronApplication, Page } from '@playwright/test';
 import { test } from '../e2e/fixtures';
-import { GUID_INPUT, httpGet, startAutoApprovePermissionMessages } from '../e2e/helpers';
+import { GUID_INPUT, httpGet } from '../e2e/helpers';
 import { startFakeZhishu, type FakeZhishu } from './fakeZhishu';
 
 test.describe.configure({ timeout: 900_000 });
@@ -134,6 +134,29 @@ async function saveJson(name: string, load: () => Promise<unknown>): Promise<voi
   fs.writeFileSync(path.join(OUT, name), JSON.stringify(value, null, 2));
 }
 
+/** Clicks "allow once" on every permission card; the first card is kept as a screenshot. */
+function startApprover(page: Page, shotName: string): () => void {
+  let running = true;
+  let shot = false;
+  void (async () => {
+    while (running) {
+      const allow = page.getByText('是，允许一次', { exact: true }).first();
+      if (await allow.isVisible().catch(() => false)) {
+        if (!shot) {
+          shot = true;
+          await page.waitForTimeout(600);
+          await snap(page, shotName).catch((): undefined => undefined);
+        }
+        await allow.click().catch((): undefined => undefined);
+      }
+      await page.waitForTimeout(700).catch((): undefined => undefined);
+    }
+  })();
+  return () => {
+    running = false;
+  };
+}
+
 /** Answers the native folder picker with the demo folder, then picks it from the home page. */
 async function pickWorkspace(electronApp: ElectronApplication, page: Page): Promise<void> {
   await electronApp.evaluate(({ dialog }, dir) => {
@@ -230,17 +253,16 @@ test('store screenshots', async ({ electronApp, page }) => {
       '把这个文件夹里客户发来的询价整理成一张汇总表（客户、国家、产品、数量、交期、要点），存成「询价汇总.md」。',
       '03-files'
     );
-    let stopApprove: (() => void) | null = null;
+    const stopApprove = startApprover(page, '03-files-permission');
     const started = Date.now();
-    for (let frame = 0; Date.now() - started < 60_000; frame++) {
-      await page.waitForTimeout(2000);
-      await snap(page, `03-files-frame-${String(frame).padStart(2, '0')}`, frame % 5 === 0);
-      if (!stopApprove && Date.now() - started > 6000) stopApprove = startAutoApprovePermissionMessages(page);
-      if (fs.existsSync(path.join(WORKSPACE, '询价汇总.md')) && frame > 6) break;
+    for (let frame = 0; Date.now() - started < 30_000; frame++) {
+      await page.waitForTimeout(1500);
+      await snap(page, `03-files-frame-${String(frame).padStart(2, '0')}`, false);
+      if (fake?.hasFinal('files')) break;
     }
-    if (!(await fake?.waitForFinal('files', 120_000))) errors.push('files: final answer was never requested');
+    if (!(await fake?.waitForFinal('files', 90_000))) errors.push('files: final answer was never requested');
     await page.waitForTimeout(4000);
-    stopApprove?.();
+    stopApprove();
     await page.waitForTimeout(1500);
     await snap(page, '03-files-done');
     await saveJson('files-messages.json', () => httpGet(page, `/api/conversations/${encodeURIComponent(id)}/messages`));
@@ -262,7 +284,7 @@ test('store screenshots', async ({ electronApp, page }) => {
     });
     if (png) fake?.setImage(Buffer.from(png, 'base64'));
     const id = await sendFromHome(page, '画一张新品宣传海报：LED 面板灯，简洁明亮，暖色背景。', '04-image');
-    const stopApprove = startAutoApprovePermissionMessages(page);
+    const stopApprove = startApprover(page, '04-image-permission');
     if (!(await fake?.waitForFinal('image', 90_000))) errors.push(`image: final answer was never requested (${id})`);
     await page.waitForTimeout(4000);
     stopApprove();
@@ -279,6 +301,33 @@ test('store screenshots', async ({ electronApp, page }) => {
     await page.getByText('手动创建', { exact: true }).first().click({ timeout: 10_000 });
     await page.waitForTimeout(1500);
     await snap(page, '05-cron-form');
+  });
+
+  await step(page, 'cron-fill', async () => {
+    await page.getByPlaceholder('输入任务名称').fill('每日询价汇总');
+    await page.getByText('选择执行任务的助手').first().click({ timeout: 10_000 });
+    await page.waitForTimeout(800);
+    await snap(page, '05-cron-agent-options');
+    await page.locator('.arco-select-option').first().click({ timeout: 10_000 });
+    await page
+      .getByPlaceholder('助手触发时执行的指令')
+      .fill('把「客户询价」文件夹里新到的询价整理成汇总表，列出今天要优先回复的客户和原因。');
+    await page.getByText('手动触发', { exact: true }).first().click({ timeout: 10_000 });
+    await page.waitForTimeout(800);
+    await snap(page, '05-cron-freq-options');
+    await page
+      .locator('.arco-select-option')
+      .filter({ hasText: /每天|每日/ })
+      .first()
+      .click({ timeout: 10_000 });
+    await page.waitForTimeout(1000);
+    await snap(page, '05-cron-form-filled');
+    await page
+      .getByRole('button', { name: /保\s*存/ })
+      .last()
+      .click({ timeout: 10_000 });
+    await page.waitForTimeout(2000);
+    await snap(page, '05-cron-list');
   });
 
   await step(page, 'settings', async () => {

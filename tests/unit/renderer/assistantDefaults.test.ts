@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveGuidAssistantDefaults } from '@/renderer/pages/guid/utils/assistantDefaults';
 import type { AssistantDetail } from '@/common/types/agent/assistantTypes';
+import type { IMcpServer } from '@/common/config/storage';
 
 const buildDetail = (
   overrides: Partial<AssistantDetail['defaults']> = {},
@@ -166,5 +167,27 @@ describe('resolveGuidAssistantDefaults', () => {
       disabledBuiltinSkillIds: [],
       mcpIds: [],
     });
+  });
+});
+
+describe('resolveGuidAssistantDefaults built-in image tool', () => {
+  const imageTool = {
+    id: 'mcp_image',
+    name: 'aionui-image-generation',
+    builtin: true,
+    enabled: true,
+  } as unknown as IMcpServer;
+  const userTool = { id: 'mcp_user', name: 'notes', builtin: false, enabled: true } as unknown as IMcpServer;
+
+  it('checks the enabled image tool for new conversations next to the remembered tools', () => {
+    const detail = buildDetail({}, { last_mcp_ids: ['mcp_user'] });
+    expect(resolveGuidAssistantDefaults(detail, [userTool, imageTool]).mcpIds).toEqual(['mcp_user', 'mcp_image']);
+  });
+
+  it('leaves tools alone when the image tool is off or the assistant pins its tools', () => {
+    const off = { ...imageTool, enabled: false } as IMcpServer;
+    expect(resolveGuidAssistantDefaults(buildDetail(), [off]).mcpIds).toEqual([]);
+    const pinned = buildDetail({ mcps: { mode: 'fixed', value: ['mcp_user'] } });
+    expect(resolveGuidAssistantDefaults(pinned, [userTool, imageTool]).mcpIds).toEqual(['mcp_user']);
   });
 });

@@ -1,3 +1,4 @@
+import { BUILTIN_IMAGE_GEN_ID, BUILTIN_IMAGE_GEN_NAME, type IMcpServer } from '@/common/config/storage';
 import type { AssistantDetail } from '@/common/types/agent/assistantTypes';
 
 export type ResolvedGuidAssistantDefaults = {
@@ -9,8 +10,18 @@ export type ResolvedGuidAssistantDefaults = {
   mcpIds: string[];
 };
 
+const isEnabledImageTool = (server: IMcpServer) =>
+  server.builtin === true &&
+  server.enabled &&
+  (server.id === BUILTIN_IMAGE_GEN_ID || server.name === BUILTIN_IMAGE_GEN_NAME);
+
+/**
+ * `mcpServers`: the catalog. Unless the assistant pins its tools, an enabled built-in image tool is
+ * checked for new conversations, so asking for a picture works without opening the tool menu first.
+ */
 export const resolveGuidAssistantDefaults = (
-  detail: AssistantDetail | null | undefined
+  detail: AssistantDetail | null | undefined,
+  mcpServers: IMcpServer[] = []
 ): ResolvedGuidAssistantDefaults => {
   if (!detail) {
     return {
@@ -59,12 +70,15 @@ export const resolveGuidAssistantDefaults = (
         ? (detail.preferences.last_disabled_builtin_skill_ids ?? [])
         : [];
 
-  const mcpIds =
-    detail.defaults.mcps.mode === 'fixed'
+  const mcpIds = [
+    ...(detail.defaults.mcps.mode === 'fixed'
       ? (detail.defaults.mcps.value ?? [])
       : detail.defaults.mcps.mode === 'auto'
         ? (detail.preferences.last_mcp_ids ?? [])
-        : [];
+        : []),
+  ];
+  const imageTool = detail.defaults.mcps.mode === 'fixed' ? undefined : mcpServers.find(isEnabledImageTool);
+  if (imageTool && !mcpIds.includes(imageTool.id)) mcpIds.push(imageTool.id);
 
   return {
     modelId: modelId || undefined,

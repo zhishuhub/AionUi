@@ -782,5 +782,8 @@
     "progress": "{{completed}}/{{total}}",
     "expand": "展開計劃",
     "collapse": "收合計劃"
+  },
+  "toolGroup": {
+    "viewSteps": "查看步驟"
   }
 }
