@@ -194,7 +194,7 @@ childProcess.execSync = function mockedExecSync(command) {
     const files = readdirSync(resourcesDir).filter((file) => file.endsWith('.nsh'));
 
     const allowedMessageBoxes = new Map<string, RegExp[]>([
-      ['installer-errors-sentry.nsh', [/MessageBox MB_YESNO\|MB_ICONSTOP/]],
+      ['installer-errors-sentry.nsh', [/MessageBox MB_OK\|MB_ICONSTOP/]],
       [
         'installer-process-control.nsh',
         [/AIONUI_MSG_FILE_OR_FOLDER_IN_USE_ZH/, /\$\(appRunning\)/, /AIONUI_MSG_CLOSE_OR_REMOVE_PREVIOUS_ZH/],
@@ -217,6 +217,33 @@ childProcess.execSync = function mockedExecSync(command) {
     }
 
     expect(offenders).toEqual([]);
+  });
+
+  it('checks the packaged Windows executable name instead of the upstream AionUi.exe', () => {
+    const builderConfig = readFileSync(resolve(repoRoot, 'packages/desktop/electron-builder.yml'), 'utf8');
+    const productName = builderConfig.match(/^productName:\s*(\S+)/m)?.[1];
+    const executableName = builderConfig.match(/^executableName:\s*(\S+)/m)?.[1];
+
+    // NSIS 按 productName 拼程序文件名，两者不一致时安装检查会找错文件
+    expect(productName).toBeTruthy();
+    expect(executableName).toBe(productName);
+
+    const resourcesDir = resolve(repoRoot, 'resources/windows');
+    const observability = readFileSync(resolve(resourcesDir, 'installer-observability.nsh'), 'utf8');
+    expect(observability).toMatch(/!define AIONUI_APP_EXECUTABLE_FILENAME "\$\{PRODUCT_FILENAME\}\.exe"/);
+
+    const hardcoded = readdirSync(resourcesDir)
+      .filter((file) => file.endsWith('.nsh'))
+      .filter((file) =>
+        readFileSync(resolve(resourcesDir, file), 'utf8')
+          .split(/\r?\n/)
+          .some((line) => !/^\s*[;#]/.test(line) && line.includes('AionUi.exe'))
+      );
+    expect(hardcoded).toEqual([]);
+
+    const queryScript = readFileSync(resolve(resourcesDir, 'support/query-lockers.ps1'), 'utf8');
+    expect(queryScript).toContain(`'${productName}.exe'`);
+    expect(queryScript).toContain(`'Uninstall ${productName}.exe'`);
   });
 
   it('routes app-cannot-be-closed cancellation through E1003 instead of quitting silently', () => {

@@ -139,6 +139,32 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
 
+      # 发版前在构建机上静默装一遍：安装器报错（退出码非 0）或装完找不到程序文件，这次构建就失败，不发 Release
+      - name: Verify Windows installer installs
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $productName = (Select-String -Path packages/desktop/electron-builder.yml -Pattern '^productName:\s*(\S+)').Matches[0].Groups[1].Value
+          $installer = Get-ChildItem -Path out -Filter "$productName-*-win-x64.exe" | Select-Object -First 1
+          if (-not $installer) { throw "installer $productName-*-win-x64.exe not found in out/" }
+          $installDir = Join-Path $env:RUNNER_TEMP 'zhishu-install-check'
+          $proc = Start-Process -FilePath $installer.FullName -ArgumentList @('/S', "/D=$installDir") -Wait -PassThru
+          Write-Host "installer exit code: $($proc.ExitCode)"
+          $candidates = @(
+            $installDir,
+            (Join-Path $env:LOCALAPPDATA "Programs\$productName"),
+            (Join-Path $env:ProgramFiles $productName)
+          )
+          $exePath = $candidates | ForEach-Object { Join-Path $_ "$productName.exe" } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if ($proc.ExitCode -ne 0 -or -not $exePath) {
+            Get-ChildItem -Path $env:TEMP -Filter 'aionui-installer-*.jsonl' -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "== $($_.FullName)"
+              Get-Content -LiteralPath $_.FullName
+            }
+            throw "installer failed: exit code $($proc.ExitCode), $productName.exe found at: $exePath"
+          }
+          Write-Host "installed: $exePath"
+
       - name: Upload installer
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
